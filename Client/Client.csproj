@@ -59,7 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="API\DKOM.cs" />
+    <Compile Include="API\User32.cs" />
     <Compile Include="API\Persistence.cs" />
     <Compile Include="Machines\LocalMachine.cs" />
     <Compile Include="API\Logger.cs" />
