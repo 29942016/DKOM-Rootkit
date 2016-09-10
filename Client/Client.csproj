@@ -59,10 +59,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="API\ThreadedAPI.cs" />
     <Compile Include="API\User32.cs" />
-    <Compile Include="API\Persistence.cs" />
     <Compile Include="Machines\LocalMachine.cs" />
-    <Compile Include="API\Logger.cs" />
+    <Compile Include="Initialization\Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Machines\Server.cs" />

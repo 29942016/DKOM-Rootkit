@@ -6,7 +6,7 @@ namespace Client
     class Server
     {
         readonly Logger _Debugger=  new Logger(Logger.source.SERVER);
-        public const string _HOST = @"59.101.9.150";
+        public const string _HOST = @"59.101.1.112";
 
         public State Status { get; private set; }
         public enum State

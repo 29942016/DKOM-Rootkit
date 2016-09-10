@@ -9,9 +9,11 @@ namespace Client
 
         public static class Actions
         {
-            public const string PROBE = "PROBE";
-            public const string RECONNECT = "RECONNECTING";
-            public const string INFO = "INFO";
+            public const string PROBE = "PROBE";               // IP + result.
+            public const string RECONNECT = "RECONNECTING";    // Failed/Success.
+            public const string INFO = "INFO";                 // General output.
+            public const string NEW_THREAD = "SPAWN THREAD";   // New System.Threading.thread created.
+            public const string PROCCESS_STATE = "PROC STATE"; // Killed/Created.
         }
 
         public enum source
