@@ -48,7 +48,7 @@ namespace Client
 
                 while (_ThisPC.Status == LocalMachine.State.ONLINE && _Server.Status == Server.State.ONLINE)
                 {
-                    CheckMachineStates();
+                    //CheckMachineStates();
                     //Start();
                 }
 
