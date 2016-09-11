@@ -14,4 +14,4 @@ http://forums.codeguru.com/showthread.php?406555-How-to-hide-your-program-from-t
 I've just translated the previously mentioned code snippet from VB/Windows XPx32 -> C#/Windows 10 x64 by
 updating the necessary required winapi calls to find the tasklist in the windows 10 environment.
 
-tldr; Hides processes from the window's task manager.
+<b>tldr;</b> Hides processes from the window's task manager.
