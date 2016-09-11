@@ -7,6 +7,9 @@ using Client.API;
 
 namespace Client
 {
+    /// This structure is used to easily manipulate
+    /// a task manager-like interface which will reflect
+    /// on the actual program.
     struct sTaskMgr
     {
             // Main window
